@@ -1,0 +1,193 @@
+background: |
+  Head Chef at a restaurant group; develops recipes, runs prep schedules,
+  and tracks food costs in Excel. No Python experience; comfortable with
+  ratios, yield percentages, and tasting-panel scores.
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge for the deep-learning notebook. Here `f1, f2, f3, f4` are
+  four **dish characteristics** scored by your tasting panel — acidity
+  (`f1`), richness / fat-content (`f2`), spice-heat (`f3`), and texture
+  complexity (`f4`) — and **`y` is the overall panel score** (0–10).
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | Four tasting-panel dimension scores per dish | feature vector | Multiple inputs combined into one prediction. |
+  | The overall panel score (0–10) | target | What we want to predict. |
+  | A flexible dish-quality model | neural network | Stack of simple computations learning a smooth function. |
+  | Each "sub-judge" combining dimension scores | hidden layer | Intermediate stage in the network. |
+  | A nonlinear squashing applied per node | activation function | The curvy step that lets the network bend. |
+  | A piecewise-linear "silent below zero, active above" | ReLU | Cheapest, most popular nonlinearity. |
+  | Computing an overall score from dimension inputs | forward pass | Pushing inputs through the network. |
+  | Working out which dimension weights to nudge | backward pass / backpropagation | Computing the gradient of the loss. |
+  | The routine that updates weights (Adam here) | optimizer | Decides how to use the gradient. |
+  | A handful of dishes processed together each step | batch | One mini-update of the weights. |
+  | Why panel scores are not just a weighted average of dimensions | non-linearity | Real flavour interactions curve and depend on each other. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Deep Learning Regression — *Predicting Panel Scores from Four Dish Characteristics*
+
+    In notebook 01 we predicted prep time from cover count with a
+    straight line. Panel scores are harder: a dish with high acidity
+    *and* high richness can be brilliant (think ceviche or a lemon-
+    butter sauce), but high acidity paired with low richness may taste
+    harsh. A **neural network** can learn that kind of interaction.
+
+  "1 adapt:narrative": |
+    ## The story, extended
+
+    Each row is one dish from your development kitchen, described by
+    four tasting-panel dimensions `f1, f2, f3, f4` (acidity, richness,
+    spice-heat, texture complexity) and one target `y` — the panel's
+    overall score. The dimensions interact: `f2 · f3` (richness × heat)
+    creates warmth, and `f1` (acidity) has a sweet-spot that depends on
+    the other three.
+
+  "4 adapt:narrative": |
+    ## 1. The data
+
+    Each row is one dish your panel has already scored. The four columns
+    are the dimension **features** `f1, f2, f3, f4` (normalised to 0–1)
+    and the column we want to predict is the **target** overall panel
+    score `y`.
+
+  "8 adapt:explanation": |
+    A straight-line model cannot capture this — the panel score is not a
+    simple weighted sum of the four dimensions. What we need is a model
+    that can learn *interactions* between dimensions, the way a
+    head chef mentally balances fat, acid, heat, and texture rather than
+    scoring each in isolation.
+
+  "9 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — why nonlinearity matters**
+    ```
+    Explain in plain words why a linear regression cannot capture a
+    flavour-profile scoring model that has a sweet-spot in spice-heat or
+    interactions between acidity and richness, but a small neural network
+    with ReLU activations can. Give a concrete two-dimension toy example.
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+    **Prompt 2 — hidden layers as flavour interactions**
+    ```
+    A "hidden layer" in a neural network mixes input features into
+    intermediate variables. If my inputs are four dish-dimension scores,
+    what kinds of mixtures might a hidden layer discover that look like
+    the classic flavour-pairing rules a chef uses? Keep the answer to ~5
+    minutes of reading so I can return to my notebook.
+    ```
+
+  "12 adapt:example": |
+    ### Worked example
+
+    Each hidden unit is like one virtual tasting judge paying attention
+    to a particular combination of dimensions — "rich *and* spicy", say.
+    The next layer pools the judges' opinions into a final score, much
+    like a panel chair averages sub-scores weighted by how much each
+    judge's palate is trusted.
+
+  "18 adapt:code-comment":
+    comments:
+      "The loss curve: each point is the average MSE for one full epoch.": |
+        Loss curve — average MSE per epoch over our batches of dishes.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — forward and backward pass**
+    ```
+    Walk me through one training step of a small neural network: forward
+    pass, MSE loss, backward pass, optimizer step. Use a tiny example
+    with four dish-dimension scores as inputs and one panel score as
+    output. Keep the answer to ~5 minutes of reading so I can return to
+    my notebook.
+    ```
+
+    **Prompt 2 — Adam vs plain SGD**
+    ```
+    What does the Adam optimizer do that plain stochastic gradient
+    descent does not? Frame the answer for someone who is used to
+    adjusting a recipe iteratively by gut feel rather than by formula.
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+  "23 adapt:explanation": |
+    Points clustered along the diagonal mean the network has captured
+    the dimension interactions and the sweet-spot in spice-heat. A
+    simple linear scoring model on the same dishes would leave a much
+    messier scatter — and would miss the interaction between richness
+    and acid that makes a great dish.
+
+  "24 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — overfitting in a recipe model**
+    ```
+    What does "overfitting" look like specifically in a neural network
+    trained on panel scores from a small number of dishes? Give a
+    concrete sign that the model is memorising your development kitchen's
+    quirks rather than learning a generalisable scoring rule. Keep the
+    answer to ~5 minutes of reading so I can return to my notebook.
+    ```
+
+  "25 adapt:exercise": |
+    ## Try this yourself
+
+    1. Reduce the network to a single `nn.Linear(4, 1)` (no hidden layer,
+       no activation function). How much worse is the test MSE? This is
+       equivalent to a simple weighted-average scoring sheet — no
+       interactions between dimensions.
+    2. Increase the learning rate to `0.5`. What happens to the loss
+       curve? Relate it to over-adjusting a sauce: too big a change
+       swings past the mark.
+    3. Replace `nn.ReLU()` with `nn.Tanh()`. Does it train as well?
+
+  "27 adapt:narrative": |
+    The training loop — forward, loss, backward, step — is the same
+    loop that powers every modern model, from a four-dimension dish
+    scorer like this one to the large AI systems behind restaurant
+    demand-forecasting and dynamic menu pricing.
+
+  "6 adapt:context": |
+    ### In your field
+
+    Each row is one dish your panel has scored. The four **features**
+    `f1, f2, f3, f4` are tasting-panel dimensions — acidity, richness,
+    spice-heat, texture complexity — rescaled to 0–1, and the **target**
+    `y` is the panel's overall score on 0–10.
+
+  "11 adapt:context": |
+    ### In your field
+
+    Each **hidden layer** is like a row of sub-judges the network
+    learns to assemble: one might pay attention to "rich *and* spicy",
+    another to "acidic *but* low-texture". The next layer pools their
+    opinions into a final score, much like the panel chair weights
+    individual judges' palates. The **non-linearity** between layers
+    is what lets the network capture sweet-spots in heat or interactions
+    between fat and acid that a simple weighted average cannot.
+
+  "15 adapt:context": |
+    ### In your field
+
+    The **forward pass** is "given a dish's four dimension scores,
+    predict the panel score"; the **backward pass / backpropagation** is
+    "work out how to nudge every weight so the prediction gets closer
+    to the panel's actual score"; the **optimizer** (Adam) applies the
+    nudges. One **batch** is a small flight of dishes processed
+    together — the same way you might run a tasting in waves.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Overfitting** here means a network that memorises your
+    development kitchen's quirks — your specific panel's biases, your
+    pantry's idiosyncrasies — and then disappoints when scoring a fresh
+    menu in another setting. The warning sign is training MSE that
+    keeps falling while test MSE stalls or rises.

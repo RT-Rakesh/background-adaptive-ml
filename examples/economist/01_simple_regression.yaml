@@ -1,0 +1,240 @@
+background: |
+  Assistant professor of economics; teaches OLS, panel data, and instrumental
+  variables; works in Stata and Python (statsmodels, pandas).
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge between econometrics and the ML vocabulary used below.
+  In this notebook, **`x` is monthly household disposable income (in
+  thousands of CAD)** and **`y` is monthly household consumption
+  (also in thousands of CAD)**.
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | Regressor / explanatory variable (income) | feature | The input the model reads. |
+  | Dependent variable / outcome (consumption) | target | The quantity to predict. |
+  | The estimation sample | training data | Observations the model fits on. |
+  | A held-out hold-out sample for out-of-sample evaluation | test data | Observations the model never sees during fitting. |
+  | Splitting the sample into estimation and validation halves | train/test split | Protocol for honest evaluation. |
+  | Your linear specification `c = β₀ + β₁·y + ε` | model | The functional form whose coefficients you estimate. |
+  | OLS coefficients `β₀, β₁` | parameters / weights | The numbers learning adjusts. |
+  | The intercept term | bias | The constant of the prediction. |
+  | Predicted consumption for a fresh income value | prediction | What the model outputs for new inputs. |
+  | OLS residuals `c_i − ĉ_i` | residual | Per-point error after fitting. |
+  | Sum of squared residuals (SSR) | loss | Single number measuring total wrongness. |
+  | Mean of squared residuals | mean squared error / MSE | Most common regression loss. |
+  | ∂(SSR)/∂β | gradient | Direction of steepest cost increase. |
+  | Iterative numerical solver (e.g. for nonlinear least squares) | gradient descent | Tiny coefficient updates that follow the gradient downhill. |
+  | The step size in that iterative solver | learning rate | How bold each update is. |
+  | One full pass over the estimation sample | epoch | One sweep through training data. |
+  | A flexible model that hugs sample-specific noise | overfitting | Loses out-of-sample predictive power. |
+  | A linear fit to a clearly nonlinear Engel curve | underfitting | Model too simple to catch the pattern. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Simple Linear Regression — *Estimating Consumption from Disposable Income*
+
+    A first machine learning notebook, framed in the language of
+    consumption-function estimation. We will treat monthly household
+    disposable income as the input and monthly household consumption
+    as the quantity to predict — a Keynesian consumption function in
+    miniature. The definitions, formulas, and code stay the same for
+    every learner; only this story changes.
+
+  "1 adapt:narrative": |
+    ## The story
+
+    From a household survey you have a cross-section of monthly
+    disposable income and consumption pairs. From those past
+    observations you have a list of `(income, consumption)` pairs.
+
+    Your job in this notebook: learn a simple consumption function
+    that turns a fresh income value into a predicted consumption
+    level — exactly the OLS exercise you would run in Stata, only
+    here we do it by hand.
+
+  "4 adapt:narrative": |
+    ## 1. Setting the scene
+
+    Each observation is one household: an `(x, y)` pair where `x`
+    is income and `y` is consumption. The glossary above gives the
+    unit mapping in full. The next cell defines the ML vocabulary.
+
+  "8 adapt:code-comment":
+    comments:
+      "Plot the raw data: each dot is one past observation.": |
+        Each dot is one household — disposable income on x, consumption on y.
+
+  "9 adapt:explanation": |
+    ### What pattern do you see?
+
+    The cloud of points slopes upward — higher income, higher
+    consumption — exactly the linear consumption function from a
+    first-year macro textbook. Our goal is to draw the *best
+    straight line* through that cloud so that for a new income
+    value we can predict consumption.
+
+  "10 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    Paste any prompt below into ChatGPT / Claude / Mistral, explore,
+    then come back.
+
+    **Prompt 1 — feature vs target in a regression**
+    ```
+    In machine learning, what is the difference between a "feature"
+    and a "target"? Apply the distinction to estimating a consumption
+    function from a household survey. Which is the feature, which is
+    the target, and how does this map onto the X / y notation in
+    statsmodels.OLS? Keep the answer to ~5 minutes of reading so I
+    can return to my notebook.
+    ```
+
+    **Prompt 2 — why hold out test data**
+    ```
+    Why do machine learning workflows split data into "training data"
+    and "test data" before fitting, while a classical econometrics
+    paper often estimates on the whole sample? Compare with the idea
+    of out-of-sample forecast evaluation. Give one realistic case
+    where skipping the train/test split would let me fool myself.
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+  "13 adapt:example": |
+    ### Worked example
+
+    With `w = 0.24` and `b = 1.1`, for `x = 100` (10⁵ CAD income)
+    the predicted consumption is `0.24 · 100 + 1.1 = 25.1`. The
+    slope `w` is the marginal propensity to consume; the intercept
+    `b` is autonomous consumption — the same two coefficients you
+    interpret in any introductory macro estimation.
+
+  "15 adapt:explanation": |
+    The two numbers above are the learned **parameters**. Compare
+    them with the ground-truth slope (`0.25`) and intercept (`1.0`)
+    — the model has recovered the underlying rule from noisy data,
+    the same way OLS recovers the true population coefficients in a
+    well-specified Monte Carlo simulation.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — what loss really is**
+    ```
+    Explain "loss" in machine learning, focusing on MSE for
+    regression. Tie it to the SSR that OLS minimises in classical
+    econometrics. Are the two ideas the same? Where do they differ
+    (think weighted least squares, robust SEs)? Keep the answer to
+    ~5 minutes of reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — residuals as a diagnostic**
+    ```
+    What can residuals tell me beyond the MSE itself? Use a
+    consumption-function example where residuals fan out at high
+    income — the textbook heteroskedasticity pattern. Keep the
+    answer to ~5 minutes of reading so I can return to my notebook.
+    ```
+
+  "23 adapt:code-comment":
+    comments:
+      "Watch the loss fall as training progresses.": |
+        Loss falling — like SSR shrinking across iterations of a numerical solver.
+
+  "24 adapt:explanation": |
+    ### Why this matters
+
+    Every modern deep-learning model is trained with some flavour
+    of **gradient descent**. The **learning rate** controls how
+    bold each step is: too small and training crawls; too large
+    and it overshoots. OLS gives you the closed-form answer for
+    free; iterative descent is what you fall back to when the
+    objective is nonlinear in the parameters (logit, NLLS, GMM).
+
+  "25 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — gradient descent intuition**
+    ```
+    Explain gradient descent to me as an econometrician. Walk
+    through one iteration on a simple loss surface — what is the
+    gradient, why we step in its negative direction, what the
+    learning rate controls — using an analogy to nudging a coefficient
+    vector to lower SSR. Keep the answer to ~5 minutes of reading so
+    I can return to my notebook.
+    ```
+
+    **Prompt 2 — when learning rate goes wrong**
+    ```
+    What happens to gradient descent if the learning rate is too
+    small, or too large? Show a small numerical example with a
+    quadratic loss and relate it to step-size choices in iterative
+    estimators (BHHH, scoring). Keep the answer to ~5 minutes of
+    reading so I can return to my notebook.
+    ```
+
+  "29 adapt:exercise": |
+    ## Try this yourself
+
+    1. Re-run the data-generation cell with a larger `noise`
+       standard deviation — a higher idiosyncratic shock variance.
+       What happens to the MSE? To the recovered slope (the MPC)?
+    2. Set the learning rate to `1e-3`. Does training still
+       converge? Why or why not? (Compare with what would happen
+       in a Newton step that overshoots.)
+    3. Reduce the dataset to the first 10 points, as if your
+       sample were a tiny pilot survey. Compare train MSE and
+       test MSE — do you see overfitting?
+
+  "31 adapt:narrative": |
+    Up next: a small **neural network** that predicts something a
+    straight line cannot — *log house price from four covariates*.
+
+  "6 adapt:context": |
+    ### In your field
+
+    In this notebook, the **feature** `x` is monthly disposable income
+    (rescaled) and the **target** `y` is monthly consumption (also
+    rescaled). Your **training data** is the household-survey panel you
+    already have; the **test data** is the cross-section you held back
+    so the fit is honest. Splitting the panel into "estimation" and
+    "holdout" subsamples *is* a **train/test split**.
+
+  "12 adapt:context": |
+    ### In your field
+
+    The slope `w` is the **marginal propensity to consume (MPC)** —
+    extra spending per extra unit of disposable income — and the
+    **bias** `b` is autonomous consumption (what households spend even
+    at zero disposable income). The **prediction**
+    $\hat{y} = w \cdot x + b$ is exactly the Keynesian consumption
+    function you would estimate with `statsmodels.OLS`.
+
+  "17 adapt:context": |
+    ### In your field
+
+    A **residual** is `(observed consumption − fitted consumption)` for
+    one household. The **MSE** is the average squared residual — closely
+    related to the SSR that OLS minimises. A smaller **loss** means a
+    tighter consumption function.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Gradient descent** is the iterative version of OLS: nudge each
+    coefficient, see whether SSR drops, repeat. The **learning rate**
+    is the step size — small for steady convergence (think conjugate
+    gradient), large to chase a rough shape quickly at the risk of
+    bouncing past the optimum.
+
+  "27 adapt:context": |
+    ### In your field
+
+    **Overfitting** would be a consumption function that fits last
+    quarter's panel beautifully but mispredicts on the next wave of the
+    survey. **Underfitting** is the opposite: assuming a single MPC for
+    the whole population when permanent-vs-transitory income clearly
+    matters. **Test data** is the holdout sample you kept for honest
+    evaluation.

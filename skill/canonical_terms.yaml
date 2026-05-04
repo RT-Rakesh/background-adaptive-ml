@@ -1,0 +1,39 @@
+# Canonical ML/DL terminology that MUST appear verbatim in every adapted notebook.
+# Enforced by scripts/validate_adapted.py.
+# These terms are the bridge between any field's analogy and the universal
+# vocabulary of machine learning. The skill may add field-specific analogies
+# alongside them, but must never replace or rename them.
+
+regression:
+  - feature
+  - target
+  - training data
+  - test data
+  - train/test split
+  - model
+  - parameters
+  - weights
+  - bias
+  - prediction
+  - residual
+  - loss
+  - mean squared error
+  - MSE
+  - gradient
+  - gradient descent
+  - learning rate
+  - epoch
+  - overfitting
+  - underfitting
+
+deep_learning:
+  - neural network
+  - hidden layer
+  - activation function
+  - ReLU
+  - forward pass
+  - backward pass
+  - backpropagation
+  - optimizer
+  - batch
+  - non-linearity

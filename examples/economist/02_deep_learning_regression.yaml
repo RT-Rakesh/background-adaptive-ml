@@ -1,0 +1,192 @@
+background: |
+  Assistant professor of economics; teaches OLS, panel data, and instrumental
+  variables; works in Stata and Python (statsmodels, pandas).
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge for the deep-learning notebook. Here `f1, f2, f3, f4` are
+  four **house-level covariates** — say floor area (`f1`), neighbourhood
+  amenity score (`f2`), distance-to-CBD penalty (`f3`), and building age
+  (`f4`) — and **`y` is the predicted log house price** on a 0–10 scale.
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | A vector of property covariates per house | feature vector | Multiple regressors combined into one prediction. |
+  | The log-price target | target | The dependent variable. |
+  | A flexible hedonic price model | neural network | Stack of simple computations learning a smooth function. |
+  | Each "perceptron" combining covariates | hidden layer | Intermediate stage in the network. |
+  | A nonlinear squashing applied per node | activation function | The curvy step that lets the network bend. |
+  | A piecewise-linear "off below 0, on above" | ReLU | Cheapest, most popular nonlinearity. |
+  | Computing a predicted log-price from covariates | forward pass | Pushing inputs through the network. |
+  | Working out which covariate weights to nudge | backward pass / backpropagation | Computing the gradient of the loss. |
+  | The optimisation routine that updates weights (Adam here) | optimizer | Decides how to use the gradient. |
+  | A handful of houses processed together each step | batch | One mini-update of the weights. |
+  | Why hedonic pricing is not linear in the covariates | non-linearity | Real price surfaces curve and interact. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Deep Learning Regression — *Predicting Log House Price from Four Covariates*
+
+    In notebook 01 we predicted consumption from income with a
+    straight line. Log house price is harder: amenity scores
+    interact with distance-to-CBD, and building age has a
+    sweet-spot (very old heritage homes price up, mid-old ones
+    price down). A **neural network** can learn that bend.
+
+  "1 adapt:narrative": |
+    ## The story, extended
+
+    Each row is one transacted property, summarised by four
+    covariates `f1, f2, f3, f4` (floor area, amenity score,
+    distance-to-CBD penalty, building age) and one target `y` —
+    the log sale price on a 0–10 scale. The covariates interact:
+    the `f2 · f3` (amenity × distance) product reflects the
+    location premium, and `f4` has a non-monotone effect.
+
+  "4 adapt:narrative": |
+    ## 1. The data
+
+    Each row is one past house. The four columns are the
+    covariate **features** `f1, f2, f3, f4` (rescaled to 0–1) and
+    the column we want to predict is the **target** log price `y`.
+
+  "8 adapt:explanation": |
+    A linear hedonic model cannot capture this — log price is not
+    a straight-line function of any single covariate. We need a
+    model that bends, and that learns *interactions* between
+    covariates, the way a non-parametric or semi-parametric
+    hedonic regression must.
+
+  "9 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — why nonlinearity matters**
+    ```
+    Explain in plain words why a linear hedonic regression cannot
+    capture the way amenity scores interact with distance-to-CBD,
+    but a small neural network with ReLU activations can. Give a
+    two-covariate toy example. Keep the answer to ~5 minutes of
+    reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — hidden layers as covariate interactions**
+    ```
+    A "hidden layer" in a neural network mixes input features into
+    intermediate variables. If my inputs are four house-level
+    covariates, what kinds of mixtures might a hidden layer
+    discover that look like the interaction terms an applied
+    economist would put in by hand? Keep the answer to ~5 minutes
+    of reading so I can return to my notebook.
+    ```
+
+  "12 adapt:example": |
+    ### Worked example
+
+    Each hidden unit is like one virtual appraiser paying
+    attention to a particular combination of covariates — "high
+    amenity *and* close to CBD", say. The next layer pools the
+    appraisers' opinions into a final log price, much like a
+    spline-on-spline hedonic model combines piecewise terms.
+
+  "18 adapt:code-comment":
+    comments:
+      "The loss curve: each point is the average MSE for one full epoch.": |
+        Loss curve — average MSE per epoch over our batches of houses.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — forward and backward pass**
+    ```
+    Walk me through one training step of a small neural network:
+    forward pass, MSE loss, backward pass, optimizer step. Use a
+    tiny example with four house covariates as inputs and log
+    price as output. Keep the answer to ~5 minutes of reading so
+    I can return to my notebook.
+    ```
+
+    **Prompt 2 — Adam vs Newton/BHHH**
+    ```
+    What does the Adam optimizer do that plain stochastic gradient
+    descent does not? Frame the answer for someone used to Newton
+    or BHHH steps in econometrics. Keep the answer to ~5 minutes
+    of reading so I can return to my notebook.
+    ```
+
+  "23 adapt:explanation": |
+    Points clustered along the diagonal mean the network has
+    captured the covariate interactions and the sweet-spot in
+    `f4`. A linear hedonic regression on the same houses would
+    leave a much messier scatter — and would systematically miss
+    the bend at the heritage-age end.
+
+  "24 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — overfitting in hedonic ML models**
+    ```
+    What does "overfitting" look like specifically in a flexible
+    hedonic-pricing neural network trained on a small sample of
+    transactions? Give a concrete sign that a model is memorising
+    its training set rather than learning generalisable price
+    relations. Keep the answer to ~5 minutes of reading so I can
+    return to my notebook.
+    ```
+
+  "25 adapt:exercise": |
+    ## Try this yourself
+
+    1. Reduce the network to a single `nn.Linear(4, 1)` (no hidden
+       layer, no activation function). How much worse is the test
+       MSE? Why is this exactly equivalent to OLS on the four
+       covariates?
+    2. Increase the learning rate to `0.5`. What happens to the
+       loss curve? Relate it to taking unrealistically large
+       Newton steps in a nonlinear estimator.
+    3. Replace `nn.ReLU()` with `nn.Tanh()`. Does it train as well?
+
+  "27 adapt:narrative": |
+    The training loop — forward, loss, backward, step — is the
+    same loop that powers every modern model, from a
+    four-covariate hedonic predictor like this one to the
+    multi-billion-parameter networks at the heart of modern
+    structural ML papers.
+
+  "6 adapt:context": |
+    ### In your field
+
+    Each row is one housing transaction. The four **features**
+    `f1, f2, f3, f4` are floor area, amenity score, distance-to-CBD
+    penalty, and building age (rescaled to 0–1) and the **target** `y`
+    is log house price on a 0–10 scale. A hedonic regression handles
+    the same inputs.
+
+  "11 adapt:context": |
+    ### In your field
+
+    Each **hidden layer** is a stack of basis functions the network
+    learns by itself — combinations like "newer building *and* close to
+    CBD" that a hedonic specialist might have built by hand using
+    splines or interaction terms. The **non-linearity** between layers
+    is what lets the network bend in ways a fixed cubic spline cannot.
+
+  "15 adapt:context": |
+    ### In your field
+
+    The **forward pass** is "given a property's four attributes,
+    predict its log price"; the **backward pass / backpropagation** is
+    "work out how to nudge every weight so the prediction gets closer
+    to the observed price"; the **optimizer** (Adam) applies the
+    nudges. One **batch** is a chunk of transactions processed
+    together — much like estimating in subsamples.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Overfitting** in a hedonic neural network means the model memorises
+    transaction-level idiosyncrasies — perhaps the buyer-specific
+    discounts in your panel — instead of learning a stable price
+    surface. The warning sign is the same one you watch when running a
+    flexible nonparametric regression: in-sample fit improves while
+    out-of-sample loss stalls.

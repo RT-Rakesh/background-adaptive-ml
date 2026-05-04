@@ -1,0 +1,237 @@
+background: |
+  Astrophysics postdoc; works on stellar light curves and photometric
+  calibration; comfortable with Python/NumPy, χ² minimisation, and LMfit.
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge between photometric calibration and the ML vocabulary used
+  below. In this notebook, **`x` is exposure time `t_exp` (in seconds)**
+  and **`y` is the recorded photon count `N` (in 10³ ADU)** for a faint
+  reference star on a clear night.
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | `t_exp`, the controlled variable per frame | feature | The input the model reads. |
+  | `N`, the measured photon count | target | The quantity to predict. |
+  | Calibration frames used to fit a linearity curve | training data | Frames the model adjusts on. |
+  | Held-out frames reserved for QC | test data | Frames the model never sees during fitting. |
+  | Splitting frames into "fit" and "QC" sets | train/test split | Protocol for honest evaluation. |
+  | The instrument response model, e.g. `N = k·t_exp + bias` | model | The functional form whose constants you tune. |
+  | Gain `k` and dark offset from your linearity fit | parameters / weights | The numbers learning adjusts. |
+  | The bias / dark offset of the detector | bias | The constant term added to the prediction. |
+  | The predicted count for a fresh exposure | prediction | What the model outputs for new inputs. |
+  | (observed − model) at each frame | residual | Per-frame error after fitting. |
+  | χ² (or its unweighted cousin SSR) | loss | Single number measuring total wrongness. |
+  | Mean of squared residuals | mean squared error / MSE | Most common regression loss. |
+  | ∂χ²/∂(parameter) | gradient | Direction of steepest cost increase. |
+  | LMfit / Levenberg–Marquardt iteration | gradient descent | Tiny parameter updates that follow the gradient downhill. |
+  | The step size in the iterative minimiser | learning rate | How bold each update is. |
+  | One full pass over all calibration frames | epoch | One sweep through training data. |
+  | A fit that follows individual photon shot-noise spikes | overfitting | Model fits noise, generalises poorly. |
+  | A pure-linear fit to a clearly nonlinear detector response | underfitting | Model too simple for the pattern. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Simple Linear Regression — *Estimating Photon Counts from Exposure Time*
+
+    A first machine learning notebook, framed in the language of
+    photometric calibration. We will treat exposure time `t_exp` as the
+    input and the recorded photon count `N` as the quantity to predict.
+    The definitions, formulas, and code stay the same for every
+    learner; only this story changes.
+
+  "1 adapt:narrative": |
+    ## The story
+
+    On a calm night you took a series of exposures of a non-saturated
+    reference star at a range of integration times. From those past
+    frames you have a list of `(t_exp, N)` pairs.
+
+    Your job in this notebook: learn a simple rule that turns a fresh
+    `t_exp` into a predicted count `N`, just like the linearity portion
+    of a detector calibration curve.
+
+  "4 adapt:narrative": |
+    ## 1. Setting the scene
+
+    Each observation is one frame: an `(x, y)` pair where `x` is
+    `t_exp` and `y` is `N`. The glossary above gives the unit mapping
+    in full. The next cell defines the ML vocabulary.
+
+  "8 adapt:code-comment":
+    comments:
+      "Plot the raw data: each dot is one past observation.": |
+        Each dot is one calibration frame — exposure time vs. photon count.
+
+  "9 adapt:explanation": |
+    ### What pattern do you see?
+
+    The cloud of points slopes upward — longer exposures, more photons —
+    exactly the shape of the linear regime of a CCD response curve. Our
+    goal is to draw the *best straight line* through that cloud so that
+    for a new exposure time we can predict the count we will record.
+
+  "10 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    Paste any prompt below into ChatGPT / Claude / Mistral, explore,
+    then come back.
+
+    **Prompt 1 — feature vs target in calibration**
+    ```
+    In machine learning, what is the difference between a "feature" and
+    a "target"? Apply the distinction to a CCD linearity calibration
+    where I record photon counts at a range of exposure times. Which is
+    the feature, which is the target, and what would gain and bias be?
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+    **Prompt 2 — why hold out test data**
+    ```
+    Why do machine learning workflows split data into "training data"
+    and "test data" before fitting? Compare with reserving a few
+    calibration frames for end-of-night QC. Give one realistic case
+    where skipping the train/test split would let me fool myself.
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+  "13 adapt:example": |
+    ### Worked example
+
+    With `w = 0.24` and `b = 1.1`, for `t_exp = 100 s` the predicted
+    count is `0.24 · 100 + 1.1 = 25.1` (in 10³ ADU). The shape is
+    identical to the gain × exposure + bias relation you fit when you
+    calibrate a new detector.
+
+  "15 adapt:explanation": |
+    The two numbers above are the learned **parameters**. Compare them
+    with the ground-truth slope (`0.25`) and intercept (`1.0`) — the
+    model has recovered the underlying rule from noisy data, the same
+    way a clean linearity fit recovers gain and bias from noisy
+    calibration frames.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — what loss really is**
+    ```
+    Explain "loss" in machine learning, focusing on MSE for regression.
+    Tie it to the χ² / SSR I minimise when I fit a calibration curve in
+    LMfit. Are the two ideas the same? Where do they differ? Keep the
+    answer to ~5 minutes of reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — residuals as a diagnostic**
+    ```
+    What can residuals tell me beyond the MSE itself? Use a calibration
+    example where residuals trend upward at long exposures (hint:
+    detector starting to saturate). Keep the answer to ~5 minutes of
+    reading so I can return to my notebook.
+    ```
+
+  "23 adapt:code-comment":
+    comments:
+      "Watch the loss fall as training progresses.": |
+        Loss falling — like χ² shrinking across LMfit iterations.
+
+  "24 adapt:explanation": |
+    ### Why this matters
+
+    Every modern deep-learning model is trained with some flavour of
+    **gradient descent**. The **learning rate** controls how bold each
+    step is: too small and training crawls; too large and it
+    overshoots. The Levenberg–Marquardt step inside LMfit is a close
+    cousin — a guided walk down the χ² surface, one parameter update
+    at a time.
+
+  "25 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — gradient descent intuition**
+    ```
+    Explain gradient descent to me as an astronomer. Walk through one
+    iteration on a simple loss surface — what is the gradient, why we
+    step in its negative direction, what the learning rate controls —
+    using an analogy to nudging gain and dark-current values to lower
+    χ² on a calibration fit. Keep the answer to ~5 minutes of reading
+    so I can return to my notebook.
+    ```
+
+    **Prompt 2 — when learning rate goes wrong**
+    ```
+    What happens to gradient descent if the learning rate is too small,
+    or too large? Show me a small numerical example with a quadratic
+    loss and relate it to step-size choices in iterative least-squares
+    fitters. Keep the answer to ~5 minutes of reading so I can return
+    to my notebook.
+    ```
+
+  "29 adapt:exercise": |
+    ## Try this yourself
+
+    1. Re-run the data-generation cell with a larger `noise` standard
+       deviation — the analogue of a higher read-noise detector. What
+       happens to the MSE? To the recovered slope (gain)?
+    2. Set the learning rate to `1e-3` — equivalent to taking giant
+       steps in your iterative fit. Does training still converge? Why
+       or why not?
+    3. Reduce the dataset to the first 10 points, as if your
+       calibration set had only ten frames. Compare train MSE and
+       test MSE — do you see overfitting?
+
+  "31 adapt:narrative": |
+    Up next: a small **neural network** that predicts something a
+    straight line cannot — *stellar magnitude from four photometric
+    bands*.
+
+  "6 adapt:context": |
+    ### In your field
+
+    In this notebook, the **feature** `x` is exposure time `t_exp` (in
+    seconds) and the **target** `y` is the photon count recorded in your
+    aperture (in 10³ ADU). Your **training data** is the bank of
+    calibration frames you have already reduced; the **test data** is
+    a handful of frames you set aside, like the few stars you withhold
+    from a photometric solution to check residuals. Splitting your
+    frames into "fit" and "QC" sets *is* a **train/test split**.
+
+  "12 adapt:context": |
+    ### In your field
+
+    The slope `w` is the photon rate (counts per second) and the
+    **bias** `b` is the read-noise / dark pedestal that survives even at
+    `t_exp = 0`. The **prediction** $\hat{y} = w \cdot x + b$ is just
+    the linear part of a CCD response curve — exactly the kind of fit
+    you make when you build a flat-field or a linearity correction.
+
+  "17 adapt:context": |
+    ### In your field
+
+    A **residual** is `(measured counts − fitted counts)` for one frame.
+    The **MSE** is the average squared residual across your sample of
+    frames — closely related to the χ² statistic from `lmfit`, just
+    without the per-point weighting. A smaller **loss** means the
+    linearity model hugs your calibration sequence more tightly.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Gradient descent** is doing by hand what `lmfit` does inside its
+    Levenberg–Marquardt solver: nudge each parameter a little, see
+    whether χ² goes down, and try again. The **learning rate** is the
+    step size — too small and you spend a whole observing night
+    converging; too large and you overshoot the χ² minimum and start
+    bouncing on the loss surface.
+
+  "27 adapt:context": |
+    ### In your field
+
+    **Overfitting** would be a linearity curve that fits every wiggle of
+    your calibration frames perfectly but then under-predicts counts on
+    a brand-new exposure. **Underfitting** is the opposite: a single-
+    slope model when your CCD actually has a distinct non-linear shoulder
+    near saturation. Holding back **test data** is the same instinct as
+    keeping a few stars out of your photometric solution to sanity-check.

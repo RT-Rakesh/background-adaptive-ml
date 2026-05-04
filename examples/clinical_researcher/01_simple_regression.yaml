@@ -1,0 +1,244 @@
+background: |
+  Clinical research associate (MD); coordinates Phase II RCTs with biomarker
+  endpoints; uses R primarily, comfortable reading Python.
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge between clinical pharmacology and the ML vocabulary used
+  below. In this notebook, **`x` is administered drug dose (in mg)** and
+  **`y` is plasma drug clearance (in L/h)** for one patient — the linear
+  regime of a dose-clearance relationship.
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | Dose, the controlled exposure | feature | The input the model reads. |
+  | Clearance, the measured PK endpoint | target | The quantity to predict. |
+  | Patients in your derivation cohort | training data | The cohort the model is fit on. |
+  | A held-out validation cohort | test data | Patients the model never sees during fitting. |
+  | Splitting a trial into derivation + validation halves | train/test split | Protocol for honest evaluation. |
+  | The dose-response model you specify (e.g. linear, Emax) | model | The functional form whose constants you tune. |
+  | Slope and intercept of a linear PK fit | parameters / weights | The numbers learning adjusts. |
+  | The intercept (e.g. baseline clearance) | bias | The constant term of the prediction. |
+  | A predicted clearance for a fresh dose | prediction | What the model outputs for new inputs. |
+  | (observed − fitted) clearance per patient | residual | Per-patient error after fitting. |
+  | The cost function `nls()` or `nlme` minimises | loss | Single number measuring total wrongness. |
+  | Mean squared residual across patients | mean squared error / MSE | Most common regression loss. |
+  | ∂(SSR)/∂(parameter) | gradient | Direction of steepest cost increase. |
+  | Iterative nonlinear least-squares step | gradient descent | Tiny parameter updates that follow the gradient downhill. |
+  | The step size in that iterative fit | learning rate | How bold each update is. |
+  | One full pass over your patients | epoch | One sweep through training data. |
+  | An Emax fit that follows individual outliers | overfitting | Model fits noise, generalises poorly. |
+  | A linear fit applied to a saturating dose-response | underfitting | Model too simple to catch the pattern. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Simple Linear Regression — *Estimating Drug Clearance from Dose*
+
+    A first machine learning notebook, framed in the language of
+    clinical pharmacology. We will treat administered dose as the
+    input and plasma drug clearance as the quantity to predict —
+    the linear regime of a dose-clearance relationship. The
+    definitions, formulas, and code stay the same for every
+    learner; only this story changes.
+
+  "1 adapt:narrative": |
+    ## The story
+
+    From a small Phase I PK study you have, for each patient, the
+    administered dose and the measured plasma clearance. From those
+    past patients you have a list of `(dose, clearance)` pairs.
+
+    Your job in this notebook: learn a simple linear rule that
+    turns a fresh dose into a predicted clearance, the same way
+    you would summarise a Phase I cohort with a linear PK fit
+    before deciding whether to model saturation explicitly.
+
+  "4 adapt:narrative": |
+    ## 1. Setting the scene
+
+    Each observation is one patient: an `(x, y)` pair where `x`
+    is dose (mg) and `y` is clearance (L/h). The glossary above
+    gives the unit mapping in full. The next cell defines the ML
+    vocabulary.
+
+  "8 adapt:code-comment":
+    comments:
+      "Plot the raw data: each dot is one past observation.": |
+        Each dot is one past patient — administered dose vs measured clearance.
+
+  "9 adapt:explanation": |
+    ### What pattern do you see?
+
+    The cloud of points slopes upward — higher dose, higher
+    measured clearance — like the linear region of a
+    dose-clearance plot before saturation kicks in. Our goal is
+    to draw the *best straight line* through that cloud so that
+    for a new patient at a new dose we can predict clearance.
+
+  "10 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    Paste any prompt below into ChatGPT / Claude / Mistral,
+    explore, then come back.
+
+    **Prompt 1 — feature vs target in a clinical study**
+    ```
+    In machine learning, what is the difference between a "feature"
+    and a "target"? Apply the distinction to a Phase I PK study
+    where I record dose and measured clearance per patient. Which
+    is the feature, which is the target, and how does this map
+    onto the predictor / outcome split I am used to in regression
+    models in R? Keep the answer to ~5 minutes of reading so I
+    can return to my notebook.
+    ```
+
+    **Prompt 2 — why hold out test data**
+    ```
+    Why do machine learning workflows split data into "training
+    data" and "test data" before fitting, and why is this similar
+    in spirit to a derivation / validation cohort design in a
+    clinical study? Give one realistic case where skipping the
+    train/test split would let me fool myself. Keep the answer to
+    ~5 minutes of reading so I can return to my notebook.
+    ```
+
+  "13 adapt:example": |
+    ### Worked example
+
+    With `w = 0.24` and `b = 1.1`, for `x = 100 mg` the predicted
+    clearance is `0.24 · 100 + 1.1 = 25.1 L/h`. The slope is the
+    per-mg increment in clearance; the intercept is the baseline
+    clearance at zero dose — the same two numbers you would
+    report from a linear PK summary.
+
+  "15 adapt:explanation": |
+    The two numbers above are the learned **parameters**. Compare
+    them with the ground-truth slope (`0.25`) and intercept
+    (`1.0`) — the model has recovered the underlying rule from
+    noisy data, the same way a clean linear PK fit recovers the
+    true dose-response slope from noisy patient measurements.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — what loss really is**
+    ```
+    Explain "loss" in machine learning, focusing on MSE for
+    regression. Tie it to the SSR that nls() or nlme minimises
+    when I fit a PK model. Are the two ideas the same? Where do
+    they differ? Keep the answer to ~5 minutes of reading so I
+    can return to my notebook.
+    ```
+
+    **Prompt 2 — residuals as a diagnostic**
+    ```
+    What can residuals tell me beyond the MSE itself? Use a
+    dose-clearance example where residuals fan out at high doses
+    (suggesting saturable elimination). Keep the answer to ~5
+    minutes of reading so I can return to my notebook.
+    ```
+
+  "23 adapt:code-comment":
+    comments:
+      "Watch the loss fall as training progresses.": |
+        Loss falling — like SSR shrinking across iterations of nls() / nlme.
+
+  "24 adapt:explanation": |
+    ### Why this matters
+
+    Every modern deep-learning model is trained with some flavour
+    of **gradient descent**. The **learning rate** controls how
+    bold each step is: too small and training crawls; too large
+    and it overshoots. The iterative step that `nls()` or `nlme`
+    takes when it fits a PK or PD model is a close cousin — a
+    guided walk down the loss surface, one parameter update at a
+    time.
+
+  "25 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — gradient descent intuition**
+    ```
+    Explain gradient descent to me as a clinical pharmacologist.
+    Walk through one iteration on a simple loss surface — what
+    is the gradient, why we step in its negative direction, what
+    the learning rate controls — using an analogy to nudging an
+    Emax / EC50 estimate to lower the SSR. Keep the answer to
+    ~5 minutes of reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — when learning rate goes wrong**
+    ```
+    What happens to gradient descent if the learning rate is too
+    small, or too large? Show me a small numerical example with a
+    quadratic loss and relate it to step-size choices in
+    iterative nonlinear fitters. Keep the answer to ~5 minutes
+    of reading so I can return to my notebook.
+    ```
+
+  "29 adapt:exercise": |
+    ## Try this yourself
+
+    1. Re-run the data-generation cell with a larger `noise`
+       standard deviation — the analogue of a more
+       between-patient-variable assay. What happens to the MSE?
+       To the recovered slope?
+    2. Set the learning rate to `1e-3`. Does training still
+       converge? Why or why not? (Compare with what would happen
+       if `nls()` took giant steps.)
+    3. Reduce the dataset to the first 10 points, as if you only
+       had a tiny pilot cohort. Compare train MSE and test MSE —
+       do you see overfitting?
+
+  "31 adapt:narrative": |
+    Up next: a small **neural network** that predicts something a
+    straight line cannot — *a biomarker response from four patient
+    covariates*.
+
+  "6 adapt:context": |
+    ### In your field
+
+    Here the **feature** `x` is dose (mg) and the **target** `y` is
+    plasma clearance (L/h). Your **training data** is the past Phase I
+    cohort whose PK profiles you already analysed; the **test data**
+    is the dose levels you held back to validate the dose-response
+    rule. The split between "model-building" and "validation" cohorts
+    *is* a **train/test split**.
+
+  "12 adapt:context": |
+    ### In your field
+
+    The slope `w` is the per-mg increment in clearance; the **bias**
+    `b` is the baseline clearance even at a notional zero dose
+    (extrapolated from the Emax model). The **prediction**
+    $\hat{y} = w \cdot x + b$ is the linear-in-dose part of an Emax
+    or PK exposure-response model — useful when the dose range is
+    well below the saturation regime.
+
+  "17 adapt:context": |
+    ### In your field
+
+    A **residual** is `(observed clearance − predicted clearance)` for
+    one subject. The **MSE** is the average squared residual — the same
+    objective an `nls()` or `nlme` fit drives towards when you fit a
+    population-PK model. A smaller **loss** means tighter exposure-
+    response predictions.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Gradient descent** is what NONMEM, Monolix, and `nlme` are doing
+    under the hood: take a step in the parameter space, see whether
+    OFV (the loss) drops, take another. The **learning rate** is the
+    step size — too small and your run takes overnight; too large and
+    your fit oscillates and never settles on a final estimate.
+
+  "27 adapt:context": |
+    ### In your field
+
+    **Overfitting** here would be a dose–clearance curve that fits the
+    Phase I cohort beautifully but fails on the Phase II patients. The
+    classic kind: a flexible model that latches onto the noise of a
+    small healthy-volunteer study and then mispredicts the patient
+    population. **Test data** is your validation cohort.

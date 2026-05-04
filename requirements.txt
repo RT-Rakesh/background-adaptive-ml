@@ -1,0 +1,8 @@
+numpy>=1.26
+matplotlib>=3.8
+scikit-learn>=1.4
+torch>=2.2
+jupyter>=1.0
+nbconvert>=7.16
+nbformat>=5.10
+PyYAML>=6.0

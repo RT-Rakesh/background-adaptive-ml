@@ -1,0 +1,184 @@
+background: |
+  Biochemistry PhD student; uses scipy.optimize.curve_fit on Michaelis–Menten
+  and dose–response curves; comfortable with Python/NumPy.
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge for the deep-learning notebook. Here `f1, f2, f3, f4` are
+  four **molecular descriptors** of a candidate compound — say
+  log P (`f1`), polar surface area (`f2`), molecular weight (`f3`), and
+  number of rotatable bonds (`f4`) — and **`y` is its predicted
+  binding affinity** (a pKi-like score, here on a 0–10 scale).
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | A vector of molecular descriptors per compound | feature vector | Multiple inputs combined into one prediction. |
+  | The pKi-like binding score | target | What we want to predict. |
+  | A QSAR model fit on past assay data | neural network | Stack of simple computations learning a smooth function. |
+  | Each "perceptron" combining descriptors | hidden layer | Intermediate stage in the network. |
+  | A nonlinear squashing applied per node | activation function | The curvy step that lets the network bend. |
+  | A piecewise-linear "off below 0, on above" | ReLU | Cheapest, most popular nonlinearity. |
+  | Computing a predicted pKi from descriptors | forward pass | Pushing inputs through the network. |
+  | Working out which descriptor weights to nudge | backward pass / backpropagation | Computing the gradient of the loss. |
+  | The optimisation routine that updates weights (Adam here) | optimizer | Decides how to use the gradient. |
+  | A handful of compounds processed together each step | batch | One mini-update of the weights. |
+  | Why you cannot QSAR-model with a single line | non-linearity | Real binding surfaces curve and interact. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Deep Learning Regression — *Predicting Binding Affinity from Molecular Descriptors*
+
+    In notebook 01 we predicted reaction velocity from substrate
+    concentration with a straight line. Binding affinity is harder:
+    moderate lipophilicity is good for membrane permeability, too much
+    is bad for solubility. A **neural network** can learn that kind of
+    bend.
+
+  "1 adapt:narrative": |
+    ## The story, extended
+
+    Each row is one candidate compound, summarised by four
+    descriptors `f1, f2, f3, f4` (log P, polar surface area, MW,
+    rotatable-bond count) and one target `y` — its measured binding
+    affinity score. The descriptors interact: `f2 · f3` (PSA × MW)
+    matters, and `f4` has a sweet spot.
+
+  "4 adapt:narrative": |
+    ## 1. The data
+
+    Each row is one past compound. The four columns are the descriptor
+    **features** `f1, f2, f3, f4` (rescaled to 0–1) and the column we
+    want to predict is the **target** binding score `y`.
+
+  "8 adapt:explanation": |
+    A linear QSAR cannot capture this — affinity is not a straight-line
+    function of any single descriptor. A model that bends, and that
+    learns *interactions* between descriptors, is what we need.
+
+  "9 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — why nonlinearity matters**
+    ```
+    Explain in plain words why a linear regression cannot capture a
+    structure–activity relationship that has a sweet-spot in log P or
+    polar surface area, but a small neural network with ReLU
+    activations can. Give a concrete two-feature toy example. Keep the
+    answer to ~5 minutes of reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — hidden layers as descriptor combinations**
+    ```
+    A "hidden layer" in a neural network mixes input features into
+    intermediate variables. If my inputs are four molecular descriptors,
+    what kinds of mixtures might a hidden layer discover that look like
+    standard medicinal-chemistry rules of thumb? Keep the answer to ~5
+    minutes of reading so I can return to my notebook.
+    ```
+
+  "12 adapt:example": |
+    ### Worked example
+
+    Each hidden unit is like one virtual reviewer paying attention to a
+    particular combination of descriptors — "high log P *and* low PSA",
+    say. The next layer pools the reviewers' opinions into a final
+    affinity score, much like a consensus QSAR ensemble does manually.
+
+  "18 adapt:code-comment":
+    comments:
+      "The loss curve: each point is the average MSE for one full epoch.": |
+        Loss curve — average MSE per epoch over our compound batches.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — forward and backward pass**
+    ```
+    Walk me through one training step of a small neural network: forward
+    pass, MSE loss, backward pass, optimizer step. Use a tiny example
+    with four molecular descriptors as inputs and one binding-affinity
+    output. Keep the answer to ~5 minutes of reading so I can return to
+    my notebook.
+    ```
+
+    **Prompt 2 — Adam vs SGD**
+    ```
+    What does the Adam optimizer do that plain SGD does not? Frame the
+    answer for someone used to scipy.optimize and Levenberg–Marquardt.
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+  "23 adapt:explanation": |
+    Points clustered along the diagonal mean the network has captured
+    the descriptor interactions and the sweet-spot in `f4`. A linear
+    QSAR on the same compounds would leave a much messier scatter — and
+    would systematically miss the bend.
+
+  "24 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — overfitting in QSAR**
+    ```
+    What does "overfitting" look like specifically in a QSAR / deep
+    learning model trained on a small compound library? Give a concrete
+    sign that a model is memorising its training set rather than
+    learning useful structure–activity rules. Keep the answer to ~5
+    minutes of reading so I can return to my notebook.
+    ```
+
+  "25 adapt:exercise": |
+    ## Try this yourself
+
+    1. Reduce the network to a single `nn.Linear(4, 1)` (no hidden
+       layer, no activation function). How much worse is the test MSE?
+       Why is this exactly equivalent to multiple linear regression on
+       the four descriptors?
+    2. Increase the learning rate to `0.5`. What happens to the loss
+       curve? Relate it to taking unrealistically large parameter steps
+       in `curve_fit`.
+    3. Replace `nn.ReLU()` with `nn.Tanh()`. Does it train as well?
+
+  "27 adapt:narrative": |
+    The training loop — forward, loss, backward, step — is the same
+    loop that powers every modern model, from a four-descriptor binding
+    predictor like this one to AlphaFold-style structure models with
+    hundreds of millions of parameters.
+
+  "6 adapt:context": |
+    ### In your field
+
+    Each row is one candidate compound. The four **features**
+    `f1, f2, f3, f4` are its descriptors — log P, polar surface area,
+    molecular weight, rotatable-bond count — rescaled to 0–1, and the
+    **target** `y` is its binding-affinity score on a 0–10 pKi-like
+    scale.
+
+  "11 adapt:context": |
+    ### In your field
+
+    Each **hidden layer** is like a layer of consensus QSAR rules the
+    network discovers automatically — combinations of descriptors that
+    a medicinal chemist might have hand-engineered (lipophilic-efficiency,
+    PSA-MW interactions, etc.). The **non-linearity** between layers is
+    what lets it capture sweet-spots in log P that a multiple linear
+    regression cannot.
+
+  "15 adapt:context": |
+    ### In your field
+
+    The **forward pass** is "given a compound's descriptors, predict its
+    affinity"; the **backward pass / backpropagation** is "work out how
+    to nudge each weight so the prediction gets closer to the assay
+    value"; the **optimizer** (Adam) applies the nudges. One **batch**
+    is a small set of compounds processed together — the same way a
+    QSAR pipeline scores molecules in chunks.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Overfitting** here means a network that memorises your training
+    library — perhaps including the quirks of a particular assay batch
+    — and then fails on compounds from a fresh series. The diagnostic is
+    the same: training MSE drifts down while test MSE stalls or rises.

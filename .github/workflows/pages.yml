@@ -1,0 +1,64 @@
+name: Build & Publish GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install scikit-learn numpy matplotlib jupyter nbconvert nbclient nbformat pyyaml
+
+      - name: Build base notebooks
+        run: python scripts/build_base_notebooks.py
+
+      - name: Apply personas & validate
+        run: python scripts/build_all.py
+
+      - name: Execute adapted notebooks
+        run: |
+          for nb in examples/*/*.ipynb; do
+            jupyter nbconvert --to notebook --execute --inplace \
+              --ExecutePreprocessor.timeout=300 "$nb"
+          done
+
+      - name: Render showcase site
+        run: python scripts/render_showcase.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

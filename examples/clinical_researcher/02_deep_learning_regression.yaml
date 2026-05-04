@@ -1,0 +1,197 @@
+background: |
+  Clinical research associate (MD); coordinates Phase II RCTs with biomarker
+  endpoints; uses R primarily, comfortable reading Python.
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge for the deep-learning notebook. Here `f1, f2, f3, f4` are
+  four **patient-level covariates** — say age (`f1`), BMI (`f2`),
+  baseline biomarker level (`f3`), and dose (`f4`) — and **`y` is the
+  predicted on-treatment biomarker response** on a 0–10 scale.
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | A vector of patient covariates per subject | feature vector | Multiple inputs combined into one prediction. |
+  | The biomarker-response endpoint | target | What we want to predict. |
+  | A flexible response model | neural network | Stack of simple computations learning a smooth function. |
+  | Each "perceptron" combining covariates | hidden layer | Intermediate stage in the network. |
+  | A nonlinear squashing applied per node | activation function | The curvy step that lets the network bend. |
+  | A piecewise-linear "off below 0, on above" | ReLU | Cheapest, most popular nonlinearity. |
+  | Computing a predicted response from covariates | forward pass | Pushing inputs through the network. |
+  | Working out which covariate weights to nudge | backward pass / backpropagation | Computing the gradient of the loss. |
+  | The optimisation routine that updates weights (Adam here) | optimizer | Decides how to use the gradient. |
+  | A handful of patients processed together each step | batch | One mini-update of the weights. |
+  | Why dose-response is not linear in dose alone | non-linearity | Real responses curve and interact. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Deep Learning Regression — *Predicting Biomarker Response from Four Patient Covariates*
+
+    In notebook 01 we predicted clearance from dose with a
+    straight line. A biomarker response is harder: the same dose
+    affects an obese patient differently from a lean one,
+    baseline biomarker level matters, and dose has a saturating
+    sweet-spot. A **neural network** can learn that bend.
+
+  "1 adapt:narrative": |
+    ## The story, extended
+
+    Each row is one trial subject, summarised by four covariates
+    `f1, f2, f3, f4` (age, BMI, baseline biomarker, dose) and one
+    target `y` — their on-treatment biomarker response on a 0–10
+    scale. The covariates interact: the `f2 · f3` (BMI ×
+    baseline) product reflects metabolic state, and `f4` (dose)
+    has a saturating sweet-spot.
+
+  "4 adapt:narrative": |
+    ## 1. The data
+
+    Each row is one past patient. The four columns are the
+    covariate **features** `f1, f2, f3, f4` (rescaled to 0–1) and
+    the column we want to predict is the **target** biomarker
+    response `y`.
+
+  "8 adapt:explanation": |
+    A linear dose-response cannot capture this — `y` is not a
+    straight-line function of any single covariate. We need a
+    model that bends, and that learns *interactions* between
+    covariates, the way a flexible PK/PD or covariate-effect
+    model must.
+
+  "9 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — why nonlinearity matters**
+    ```
+    Explain in plain words why a linear regression cannot capture
+    a dose-response that has a saturating sweet-spot in dose and
+    interacts with BMI and baseline biomarker, but a small neural
+    network with ReLU activations can. Give a concrete two-
+    covariate toy example. Keep the answer to ~5 minutes of
+    reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — hidden layers as covariate interactions**
+    ```
+    A "hidden layer" in a neural network mixes input features
+    into intermediate variables. If my inputs are four patient
+    covariates, what kinds of mixtures might a hidden layer
+    discover that look like the subgroup effects a clinician
+    would test for by hand (age × dose, BMI × baseline)? Keep
+    the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+  "12 adapt:example": |
+    ### Worked example
+
+    Each hidden unit is like one virtual reviewer paying
+    attention to a particular combination of covariates — "older
+    patient *and* low baseline biomarker", say. The next layer
+    pools the reviewers' opinions into a final response score,
+    much like a covariate-adjusted analysis combines effect
+    estimates by hand.
+
+  "18 adapt:code-comment":
+    comments:
+      "The loss curve: each point is the average MSE for one full epoch.": |
+        Loss curve — average MSE per epoch over our batches of patients.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — forward and backward pass**
+    ```
+    Walk me through one training step of a small neural network:
+    forward pass, MSE loss, backward pass, optimizer step. Use a
+    tiny example with four patient covariates as inputs and a
+    biomarker response as output. Keep the answer to ~5 minutes
+    of reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — Adam vs Newton**
+    ```
+    What does the Adam optimizer do that plain stochastic
+    gradient descent does not? Frame the answer for someone used
+    to Newton-type steps in nonlinear mixed-effects software like
+    NONMEM. Keep the answer to ~5 minutes of reading so I can
+    return to my notebook.
+    ```
+
+  "23 adapt:explanation": |
+    Points clustered along the diagonal mean the network has
+    captured the covariate interactions and the saturating
+    sweet-spot in dose. A linear dose-response model on the same
+    patients would leave a much messier scatter — and would
+    systematically miss the dose-saturation bend.
+
+  "24 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — overfitting in clinical ML models**
+    ```
+    What does "overfitting" look like specifically in a flexible
+    biomarker-response neural network trained on a small Phase
+    II cohort? Give a concrete sign that a model is memorising
+    its training set rather than learning a generalisable
+    response rule. Keep the answer to ~5 minutes of reading so
+    I can return to my notebook.
+    ```
+
+  "25 adapt:exercise": |
+    ## Try this yourself
+
+    1. Reduce the network to a single `nn.Linear(4, 1)` (no
+       hidden layer, no activation function). How much worse is
+       the test MSE? Why is this exactly equivalent to a linear
+       regression on the four covariates?
+    2. Increase the learning rate to `0.5`. What happens to the
+       loss curve? Relate it to taking unrealistically large
+       parameter steps in NONMEM.
+    3. Replace `nn.ReLU()` with `nn.Tanh()`. Does it train as
+       well?
+
+  "27 adapt:narrative": |
+    The training loop — forward, loss, backward, step — is the
+    same loop that powers every modern model, from a four-
+    covariate biomarker predictor like this one to the
+    multi-billion-parameter networks behind some of the newest
+    clinical-decision-support tools.
+
+  "6 adapt:context": |
+    ### In your field
+
+    Each row is one subject. The four **features** `f1, f2, f3, f4` are
+    age, BMI, baseline biomarker level, and dose (rescaled to 0–1) and
+    the **target** `y` is the on-treatment biomarker response on a 0–10
+    scale. A covariate-adjusted PK/PD model in NONMEM handles the same
+    inputs.
+
+  "11 adapt:context": |
+    ### In your field
+
+    Each **hidden layer** is a stack of subgroup detectors the network
+    discovers by itself — combinations like "older patient *and* high
+    baseline biomarker" that a clinician might test for by hand. The
+    **non-linearity** between layers is what lets the network capture
+    saturation in dose response and covariate effects that interact.
+
+  "15 adapt:context": |
+    ### In your field
+
+    The **forward pass** is "given a subject's covariates, predict
+    their biomarker response"; the **backward pass / backpropagation**
+    is "work out how to nudge every weight so the prediction gets
+    closer to the observed response"; the **optimizer** (Adam) applies
+    the nudges. One **batch** is a small group of subjects processed
+    together.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Overfitting** in a flexible biomarker-response model trained on a
+    small Phase II cohort means the network memorises the cohort's
+    quirks rather than learning a generalisable response rule. The
+    warning sign is the usual one: training MSE drifts down while test
+    MSE plateaus or rises.

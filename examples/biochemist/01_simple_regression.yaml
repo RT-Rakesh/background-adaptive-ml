@@ -1,0 +1,233 @@
+background: |
+  Biochemistry PhD student; uses scipy.optimize.curve_fit on Michaelis–Menten
+  and dose–response curves; comfortable with Python/NumPy.
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge between enzyme kinetics and the ML vocabulary used below.
+  In this notebook, **`x` is substrate concentration `[S]` (in mM)** and
+  **`y` is initial reaction velocity `v₀` (in µM/s)**. Everything else is
+  just renamed enzymology.
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | `[S]`, the controlled variable in your assay | feature | The input the model reads. |
+  | `v₀`, the measured velocity | target | The quantity to predict. |
+  | Calibration wells used to fit a standard curve | training data | Points the model adjusts on. |
+  | Held-out replicates kept for QC | test data | Points the model never sees during fitting. |
+  | Splitting wells into "fit" and "QC" sets | train/test split | Protocol for honest evaluation. |
+  | The Michaelis–Menten functional form | model | The rule whose constants you tune. |
+  | `Vmax`, `Km` from `curve_fit` | parameters / weights | The numbers learning adjusts. |
+  | The blank / y-intercept offset | bias | The constant term of the prediction. |
+  | A `v₀` predicted for a fresh `[S]` | prediction | Model output for new inputs. |
+  | (measured − fitted) at each well | residual | Per-point error after fitting. |
+  | Sum of squared residuals minimised by `curve_fit` | loss | Single number measuring total wrongness. |
+  | Mean of those squared residuals | mean squared error / MSE | Most common regression loss. |
+  | ∂(SSR)/∂(parameter) | gradient | Direction of steepest cost increase. |
+  | Levenberg–Marquardt step inside `curve_fit` | gradient descent | Tiny parameter updates that follow the gradient downhill. |
+  | Step size in your iterative fit | learning rate | How bold each update is. |
+  | One full pass through your wells | epoch | One sweep through training data. |
+  | A Hill curve hugging your noise | overfitting | Model fits noise, generalises poorly. |
+  | A linear fit on a clearly sigmoidal response | underfitting | Model too simple to catch the pattern. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Simple Linear Regression — *Estimating Reaction Velocity from Substrate Concentration*
+
+    A first machine learning notebook, framed in the language of enzyme
+    kinetics. We will treat substrate concentration `[S]` as the input and
+    initial reaction velocity `v₀` as the quantity to predict. The
+    definitions, formulas, and code stay the same for every learner; only
+    this story changes.
+
+  "1 adapt:narrative": |
+    ## The story
+
+    You ran an enzyme assay at a range of substrate concentrations and
+    recorded the initial velocity in each well. From those past assay
+    points you have a list of `([S], v₀)` pairs.
+
+    Your job in this notebook: learn a simple rule that turns a fresh
+    `[S]` into a predicted `v₀`, the same way a calibration line lets you
+    read concentration off an absorbance reading.
+
+  "4 adapt:narrative": |
+    ## 1. Setting the scene
+
+    Each observation here is one well: an `(x, y)` pair where `x` is
+    `[S]` and `y` is `v₀`. The glossary above gives the unit mapping in
+    full. The next cell defines the ML vocabulary.
+
+  "8 adapt:code-comment":
+    comments:
+      "Plot the raw data: each dot is one past observation.": |
+        Each dot is one past assay well — [S] on x, measured v₀ on y.
+
+  "9 adapt:explanation": |
+    ### What pattern do you see?
+
+    The cloud of points slopes upward — higher `[S]`, higher `v₀` — much
+    like the *initial* (low-substrate) limb of a Michaelis–Menten curve,
+    where the response is approximately linear. Our goal is to draw the
+    best straight line through this cloud so that for a new substrate
+    concentration we can read off a velocity estimate.
+
+  "10 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    Paste any prompt below into ChatGPT / Claude / Mistral, explore, then
+    come back.
+
+    **Prompt 1 — feature vs target in your assay**
+    ```
+    In machine learning, what is the difference between a "feature" and a
+    "target"? Apply the distinction to a Michaelis–Menten experiment where
+    I measure v₀ at several substrate concentrations. Which is the
+    feature, which is the target, and what would Vmax/Km be? Keep the
+    answer to ~5 minutes of reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — why hold out test data**
+    ```
+    Why do machine learning workflows split data into "training data" and
+    "test data" before fitting? Compare with reserving a few wells of a
+    calibration plate to QC the standard curve. Give one realistic
+    situation where skipping the train/test split would make me fool
+    myself. Keep the answer to ~5 minutes of reading so I can return to
+    my notebook.
+    ```
+
+  "13 adapt:example": |
+    ### Worked example
+
+    With `w = 0.24` and `b = 1.1`, for `[S] = 100 mM` the predicted
+    velocity is `0.24 · 100 + 1.1 = 25.1 µM/s`. The shape is identical to
+    reading concentration from a Beer–Lambert standard curve: a slope, an
+    intercept, and a number you read off the line.
+
+  "15 adapt:explanation": |
+    The two numbers above are the learned **parameters**. Compare them
+    with the ground-truth slope (`0.25`) and intercept (`1.0`) — the
+    model has recovered the underlying rule from noisy data, the same way
+    a clean Michaelis–Menten fit recovers `Vmax` and `Km` from noisy `v₀`
+    measurements.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — what loss really is**
+    ```
+    Explain what "loss" means in machine learning, focusing on MSE for
+    regression. Tie it to the sum of squared residuals that
+    scipy.optimize.curve_fit minimises when I fit a Michaelis–Menten
+    equation. Are the two ideas the same? Where do they differ? Keep the
+    answer to ~5 minutes of reading so I can return to my notebook.
+    ```
+
+    **Prompt 2 — residuals as a diagnostic**
+    ```
+    What can residuals tell me beyond the MSE itself? Use a dose–response
+    example where residuals fan out at high concentration. Keep the
+    answer to ~5 minutes of reading so I can return to my notebook.
+    ```
+
+  "23 adapt:code-comment":
+    comments:
+      "Watch the loss fall as training progresses.": |
+        Loss falling — like χ² shrinking across iterations of curve_fit.
+
+  "24 adapt:explanation": |
+    ### Why this matters
+
+    Every modern deep-learning model is trained with some flavour of
+    **gradient descent**. The **learning rate** controls how bold each
+    step is: too small and training crawls; too large and it overshoots.
+    The Levenberg–Marquardt step inside `curve_fit` is a close cousin —
+    a guided walk down the loss surface, one parameter update at a time.
+
+  "25 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — gradient descent intuition**
+    ```
+    Explain gradient descent to me as a biochemist. Walk through one
+    iteration on a simple loss surface — what is the gradient, why we
+    step in its negative direction, what the learning rate controls —
+    using an analogy to titrating a putative Km value to minimise SSR.
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+    **Prompt 2 — when learning rate goes wrong**
+    ```
+    What happens to gradient descent if the learning rate is too small,
+    or too large? Show me a small numerical example with a quadratic
+    loss and relate it to step-size choices in iterative curve fitters.
+    Keep the answer to ~5 minutes of reading so I can return to my
+    notebook.
+    ```
+
+  "29 adapt:exercise": |
+    ## Try this yourself
+
+    1. Re-run the data-generation cell with a larger `noise` standard
+       deviation — think noisier instrument or shorter integration time.
+       What happens to the MSE? To the recovered slope?
+    2. Set the learning rate to `1e-3` — equivalent to taking giant
+       steps in your iterative fit. Does training still converge? Why or
+       why not?
+    3. Reduce the dataset to the first 10 points, as if your calibration
+       plate had only ten standards. Compare train MSE and test MSE —
+       do you see overfitting?
+
+  "31 adapt:narrative": |
+    Up next: a small **neural network** that predicts something a
+    straight line cannot — *binding affinity from molecular descriptors*.
+
+  "6 adapt:context": |
+    ### In your field
+
+    Here the **feature** `x` is substrate concentration `[S]` (mM) and
+    the **target** `y` is initial reaction velocity `v₀` (µM/s). Your
+    **training data** is the calibration wells you used to fit the
+    standard curve; the **test data** is the QC replicates you keep
+    aside to check that the fit is honest. Splitting the plate into
+    "fit" and "QC" wells *is* a **train/test split**.
+
+  "12 adapt:context": |
+    ### In your field
+
+    The slope `w` carries the units of `v₀` per unit `[S]` (the linear
+    limb of Michaelis–Menten); the **bias** `b` is the y-intercept —
+    typically your blank or background velocity. The **prediction**
+    $\hat{y} = w \cdot x + b$ is the same shape as a Beer–Lambert
+    standard curve where you read concentration off a slope and an
+    intercept.
+
+  "17 adapt:context": |
+    ### In your field
+
+    A **residual** is `(measured v₀ − fitted v₀)` for one well. The
+    **MSE** is the average squared residual — the same quantity (up to
+    a constant) that `scipy.optimize.curve_fit` minimises when you fit
+    a Michaelis–Menten model with `least_squares`. A smaller **loss**
+    means a tighter standard curve.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Gradient descent** is what `curve_fit` does inside its
+    Levenberg–Marquardt solver — nudge `Vmax`, nudge `Km`, look at how
+    SSR changed, repeat. The **learning rate** is the step size: too
+    small and the fit takes forever to converge; too large and you
+    overshoot and start oscillating around the minimum.
+
+  "27 adapt:context": |
+    ### In your field
+
+    **Overfitting** here would be a Hill curve that hugs every noisy
+    well perfectly but mis-predicts a fresh assay run. **Underfitting**
+    is fitting a straight line to a clearly sigmoidal dose–response.
+    Holding back **test data** is the same instinct as reserving a few
+    QC wells before fitting your standard curve.

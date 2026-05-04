@@ -1,0 +1,188 @@
+background: |
+  Astrophysics postdoc; works on stellar light curves and photometric
+  calibration; comfortable with Python/NumPy, χ² minimisation, and LMfit.
+
+glossary: |
+  ## Glossary — your field ↔ ML
+
+  Mental bridge for the deep-learning notebook. Here `f1, f2, f3, f4` are
+  the **four photometric-band measurements** for one star — say
+  `u` (`f1`), `g` (`f2`), `r` (`f3`), `i` (`f4`) — and **`y` is its
+  predicted bolometric magnitude** on a 0–10 scale.
+
+  | Your field | ML term | Short bridge |
+  |------------|---------|--------------|
+  | A vector of band magnitudes per star | feature vector | Multiple inputs combined into one prediction. |
+  | The bolometric magnitude estimate | target | What we want to predict. |
+  | An empirical SED-fitter trained on past stars | neural network | Stack of simple computations learning a smooth function. |
+  | Each "perceptron" combining bands | hidden layer | Intermediate stage in the network. |
+  | A nonlinear squashing applied per node | activation function | The curvy step that lets the network bend. |
+  | A piecewise-linear "off below 0, on above" | ReLU | Cheapest, most popular nonlinearity. |
+  | Computing a predicted magnitude from band fluxes | forward pass | Pushing inputs through the network. |
+  | Working out which band-weights to nudge | backward pass / backpropagation | Computing the gradient of the loss. |
+  | The optimisation routine that updates weights (Adam here) | optimizer | Decides how to use the gradient. |
+  | A handful of stars processed together each step | batch | One mini-update of the weights. |
+  | Why bolometric magnitude is not a linear sum of band magnitudes | non-linearity | Real SEDs curve and bands interact. |
+
+overrides:
+  "0 adapt:narrative": |
+    # Deep Learning Regression — *Predicting Bolometric Magnitude from Four Photometric Bands*
+
+    In notebook 01 we predicted photon counts from exposure time with
+    a straight line. Bolometric magnitude is harder: colour indices
+    matter, and a too-blue or too-red excess shifts the answer in a
+    non-linear way. A **neural network** can learn that bend.
+
+  "1 adapt:narrative": |
+    ## The story, extended
+
+    Each row is one star, summarised by four band measurements
+    `f1, f2, f3, f4` (think `u, g, r, i`) and one target `y` — its
+    bolometric magnitude on a 0–10 scale. The bands interact: the
+    `f2 · f3` (g·r) product carries colour information, and `f4` has
+    a sweet spot near solar-type SEDs.
+
+  "4 adapt:narrative": |
+    ## 1. The data
+
+    Each row is one past star. The four columns are the band
+    **features** `f1, f2, f3, f4` (rescaled to 0–1) and the column we
+    want to predict is the **target** bolometric magnitude `y`.
+
+  "8 adapt:explanation": |
+    A linear colour-magnitude transform cannot capture this — `y` is
+    not a straight-line function of any single band. We need a model
+    that bends, and that learns *interactions* between bands, the way
+    a photometric-redshift estimator must.
+
+  "9 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — why nonlinearity matters**
+    ```
+    Explain in plain words why a linear combination of u, g, r, i
+    magnitudes cannot recover bolometric magnitude across the whole HR
+    diagram, but a small neural network with ReLU activations can.
+    Give a concrete two-band toy example where the relation kinks at
+    a colour boundary. Keep the answer to ~5 minutes of reading so I
+    can return to my notebook.
+    ```
+
+    **Prompt 2 — hidden layers as colour-index detectors**
+    ```
+    A "hidden layer" in a neural network mixes input features into
+    intermediate variables. If my inputs are four photometric bands,
+    what kinds of mixtures might a hidden layer discover that look
+    like colour indices, Balmer breaks, or other diagnostics
+    astronomers already use? Keep the answer to ~5 minutes of reading
+    so I can return to my notebook.
+    ```
+
+  "12 adapt:example": |
+    ### Worked example
+
+    Each hidden unit is like one specialist colour-index detector
+    paying attention to a particular combination of bands — "blue
+    excess plus moderate r", say. The next layer pools the
+    specialists' opinions into a final magnitude, much like a SED
+    template-fitting code combines several diagnostics by hand.
+
+  "18 adapt:code-comment":
+    comments:
+      "The loss curve: each point is the average MSE for one full epoch.": |
+        Loss curve — average MSE per epoch over our batches of stars.
+
+  "19 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — forward and backward pass**
+    ```
+    Walk me through one training step of a small neural network:
+    forward pass, MSE loss, backward pass, optimizer step. Use a tiny
+    example with four photometric bands as inputs and a magnitude as
+    output. Keep the answer to ~5 minutes of reading so I can return
+    to my notebook.
+    ```
+
+    **Prompt 2 — Adam vs LMfit**
+    ```
+    What does the Adam optimizer do that plain stochastic gradient
+    descent does not? Frame the answer for someone used to LMfit and
+    Levenberg–Marquardt. Keep the answer to ~5 minutes of reading so
+    I can return to my notebook.
+    ```
+
+  "23 adapt:explanation": |
+    Points clustered along the diagonal mean the network has captured
+    the colour interactions and the sweet-spot in `f4`. A linear
+    colour-magnitude transform on the same stars would leave a much
+    messier scatter — and would systematically miss the bend at the
+    M-dwarf end.
+
+  "24 adapt:suggestions": |
+    ### Go deeper with an LLM (optional — skip if you already know this)
+
+    **Prompt 1 — overfitting in photo-z / SED nets**
+    ```
+    What does "overfitting" look like specifically in a photometric
+    neural-network estimator trained on a small sample of stars? Give
+    a concrete sign that a model is memorising its training set
+    rather than learning useful colour relations. Keep the answer to
+    ~5 minutes of reading so I can return to my notebook.
+    ```
+
+  "25 adapt:exercise": |
+    ## Try this yourself
+
+    1. Reduce the network to a single `nn.Linear(4, 1)` (no hidden
+       layer, no activation function). How much worse is the test
+       MSE? Why is this exactly equivalent to a linear colour-
+       magnitude transform on the four bands?
+    2. Increase the learning rate to `0.5`. What happens to the loss
+       curve? Relate it to taking unrealistically large parameter
+       steps in an LMfit run.
+    3. Replace `nn.ReLU()` with `nn.Tanh()`. Does it train as well?
+
+  "27 adapt:narrative": |
+    The training loop — forward, loss, backward, step — is the same
+    loop that powers every modern model, from a four-band magnitude
+    predictor like this one to the multi-billion-parameter networks
+    that classify Rubin/LSST alerts in real time.
+
+  "6 adapt:context": |
+    ### In your field
+
+    Each row is one source. The four **features** `f1, f2, f3, f4` are
+    its u, g, r, i magnitudes (rescaled to 0–1) and the **target** `y`
+    is its bolometric magnitude on a 0–10 scale. The model takes the
+    full SED snapshot (not just one band) and returns one prediction.
+
+  "11 adapt:context": |
+    ### In your field
+
+    Each **hidden layer** is a stack of basis functions the network
+    learns by itself — a bit like the SED templates you would feed to a
+    photo-z code, except the network discovers its own templates from
+    the data. The **non-linearity** between layers is what lets it
+    capture sharp features like the 4000 Å break that no linear
+    combination of u, g, r, i could reproduce.
+
+  "15 adapt:context": |
+    ### In your field
+
+    The **forward pass** is "given a source's u, g, r, i, compute a
+    bolometric prediction"; the **backward pass / backpropagation** is
+    "work out how to nudge every weight to bring that prediction closer
+    to the truth"; the **optimizer** (Adam) actually applies the nudges.
+    One **batch** is a chunk of sources processed together — the LSST
+    photo-z pipelines do this thousands of times per night.
+
+  "21 adapt:context": |
+    ### In your field
+
+    **Overfitting** in a deep model means the network has learned to
+    "recognise" individual training sources rather than the underlying
+    SED–magnitude relation, so it does well on Rubin commissioning
+    fields but fails on a different patch of sky. The classic warning
+    sign is training MSE that keeps falling while test MSE plateaus or
+    rises.
